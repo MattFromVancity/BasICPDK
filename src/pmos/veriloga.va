@@ -1,0 +1,134 @@
+// VerilogA for basicPDK, pmos0p8, veriloga
+
+`include "constants.vams"
+`include "disciplines.vams"
+
+module pmos0p8(gate, drain, source, body);
+  inout drain, source, gate, body;
+  electrical drain, source, gate, body;
+  // model parameters
+  parameter real    width      = 100;                    // [m]
+  parameter real    length     = 2;                      // [m]
+  parameter integer be         = 0;                      // Enable body effect.
+  parameter integer clme       = 1;                      // Enable channel length modulation effect/
+  parameter integer mmatch     = 0 from[0:1];            // Enable mismatch
+  parameter integer procVar    = 0 from[0:1];            // Enable process variation
+  parameter real    procVal    = 0.02 from(0:0.10);      // Process variation value
+
+  // pmos parameters ~ 500nm technology
+  localparam real Nsub   = 5e20;           // doping of substrate m^(-3)
+  localparam real ni     = 1e16;           // intrinsic carrier conc. in Si m^(-3)
+  localparam real u_p    = 100e-4;         // majority carrier mobility m^2/(V/s)
+  localparam real e_ox   = 34e-9;          // permitivity of SiO2 F/m 
+  localparam real lamda  = 0.2;            // channel length modulation coefficient 1/V 
+  localparam real e_si   = 10e-9;          // permitivity of Si F/m
+  localparam real tox    = 9e-9;           // thickness of gate oxide m
+  localparam real phi_ms = -1.36;          // V
+  localparam real q      = 1.60e-19;       // Columbs
+  localparam real c_ov   = 0.3e-9;         // Gate-Source/Gate-Drain overlap capacitance F/m
+  localparam real c_jsw  = 0.32e-11;       // Source/Drain sidewall junction wall capacitace F/m
+  localparam real c_j    = 0.94e-3;        // Souce/Drain junction capacitance in F/m^2
+  localparam real E      = 10n;            // Source/Drain length [m]
+  // simualtion parameter
+  localparam integer seed = 5;
+
+  // threshold voltages and variabes used in simulation
+  real vth;
+  real vth_0;
+  real phif;
+  real gamma;
+  real W;
+  real L;
+  real tox_nominal;
+  real c_ox;
+  // parasitic capacitances
+  real c_gs;
+  real c_gd;
+  real c_gb;
+  real c_sb;
+  real c_db;
+  real c_d;
+
+  // tox, width and length adjustments for process and device mismatch
+  analog initial begin
+    if(procVar == 1) begin
+      if(mmatch == 1) begin
+        L = length*(1 + procVal + 0.10*$rdist_uniform(seed,0, 1));
+        W = width*(1 + procVal  + 0.10*$rdist_uniform(seed,0, 1));
+        tox_nominal = tox*(1.0 + procVal + 0.10*$rdist_uniform(seed,0, 1));
+      end else begin
+        L = length*(1.0 + procVal);
+        W = width*(1.0 + procVal);
+        tox_nominal = tox*(1.0 + procVal);      
+      end
+    end else begin
+      L = length;
+      W = width;
+      tox_nominal = tox;
+    end
+    c_ox = e_ox/tox_nominal;
+    c_db = W*E*c_j + 2*(W+E)*c_jsw;
+    c_sb = W*E*c_j + 2*(W+E)*c_jsw;
+  end
+
+  analog begin
+    // Modeling of temperature dependence
+    phif = $vt($temperature)*$ln(Nsub/ni);
+    vth_0 = phi_ms + 2*phif + ($sqrt(4*phif*829p)/c_ox);
+    gamma = $sqrt(2*q*e_si*Nsub)/c_ox;
+
+    // body effect modeling
+    if(be == 1)
+      vth = vth_0 + ((be*gamma)*($sqrt((2*phif*$abs(V(source,body)))**(0.5)) - $sqrt((phif)**(0.5))));
+    else
+      vth = vth_0;
+
+    // depletion region capacitance
+    c_d = W*L*$sqrt(q*e_si*Nsub/(4*phif));
+
+    // current model with parasitic capacitances
+    if( $abs(V(gate,source)) <= $abs(vth)) begin
+      // off
+      // CGS & CGD
+      c_gs = (W*c_ov);
+      c_gd = (W*c_ov);
+      // CGB
+      c_gb  = (((W*L*c_ox)*c_d)/(W*L*c_ox + c_d));
+      // IDS
+      I(drain, source) <+ -5.0u*$exp(V(gate, source)/$vt($temperature));
+    end else if($abs(V(drain, source)) <= ($abs(V(gate,source)) - $abs(vth))) begin
+      // triode
+      // CGS & CGD
+      c_gd = ((1/2)*W*L*c_ox + W*c_ov);
+      c_gs = ((1/2)*W*L*c_ox + W*c_ov);
+      // CGB
+      c_gb  = 0;
+      // IDS
+      I(drain, source) <+ -u_p*c_ox*(W/L)*(($abs(V(gate,source)) - $abs(vth))*V(drain,source) - 0.5*V(drain,source)**2);
+    end else begin
+      // saturation
+      // CGS & CGD
+      c_gs = ((2/3)*W*L*c_ox + width*c_ov);
+      c_gd = (W*c_ov);
+      // CGB
+      c_gb  = 0;
+      // IDS
+      I(drain, source) <+ -0.5*u_p*c_ox*(W/L)*(($abs(V(gate,source)) - $abs(vth))**2)*(1+clme*lamda*V(drain,source));
+    end
+
+    // current due to parasitic capacitance
+    I(gate, source) <+ c_gs*ddt(V(gate, source));
+    I(gate, drain)  <+ c_gd*ddt(V(gate, drain));
+    I(gate, body)   <+ c_gb*ddt(V(gate, body));
+    I(drain, body)  <+ c_db*ddt(V(drain, body));
+    I(source, body) <+ c_sb*ddt(V(source, body));
+
+    // Display PMOS Device Values
+    $strobe("VTH = %f", vth);
+    $strobe("Cox = %f", c_ox);
+    $strobe("W = %f", W);
+    $strobe("L = %f", L);
+
+  end
+
+endmodule
