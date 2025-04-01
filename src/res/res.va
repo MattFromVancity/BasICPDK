@@ -1,0 +1,57 @@
+// VerilogA for basicPDK, res, veriloga
+
+`include "constants.vams"
+`include "disciplines.vams"
+
+module res(p, n);
+    inout p, n;
+    electrical p, n;
+
+    parameter real rho_0  = 1;       // Material resitivity [ohm-m/K]
+    parameter real T_0    = 300;     // Temperature at which rho_0 was obtained [K]
+    parameter real alpha  = 1;       // 1st order coefficient
+    parameter real beta   = 1;       // 2nd order coefficient
+    parameter real kappa  = 1;       // 3rd order coefficient
+    parameter real width  = 100;     // width of material in [m]
+    parameter real length = 100;     // length of material in [m]
+    parameter real thick  = 100;     // thickness of material in [m]
+    parameter integer mmatch = 1;    // enables mismatch.
+    parameter integer procVar = 1;   // enables process variation.
+    parameter real procVal    = 0.2; // process variation parameter.
+
+    localparam integer seed = 5;
+
+    real t;
+    real W;
+    real L;
+    real R;
+
+    // thickness, width and length adjustments for process and device mismatch
+  analog initial begin
+    if(procVar == 1) begin
+      if(mmatch == 1) begin
+        L = length*(1 + procVal + 0.10*$rdist_uniform(seed,0, 1));
+        W = width*(1 + procVal  + 0.10*$rdist_uniform(seed,0, 1));
+        t = thick*(1.0 + procVal + 0.10*$rdist_uniform(seed,0, 1));
+      end else begin
+        L = length*(1.0 + procVal);
+        W = width*(1.0 + procVal);
+        t = thick*(1.0 + procVal);      
+      end
+    end else begin
+      L = length;
+      W = width;
+      t = thick;
+    end
+  end
+
+  analog begin
+    R = (rho_0/t)*(1 + alpha*($temperature - T_0) + beta*($temperature - T_0)**2 + kappa*($temperature - T_0)**3)*(L/W);
+    V(p, n) <+ I(p, n)*R;
+    // Display PMOS Device Values
+    $strobe("R = %f", R);
+    $strobe("W = %f", W);
+    $strobe("L = %f", L);
+  end
+
+endmodule
