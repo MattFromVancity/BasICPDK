@@ -3,12 +3,12 @@
 `include "constants.vams"
 `include "disciplines.vams"
 
-module pmos0p8(gate, drain, source, body);
+module pmos(gate, drain, source, body);
   inout drain, source, gate, body;
   electrical drain, source, gate, body;
   // model parameters
-  parameter real    width      = 100;                    // [m]
-  parameter real    length     = 2;                      // [m]
+  parameter real    width      = 10u;                    // [m]
+  parameter real    length     = 1u;                      // [m]
   parameter integer be         = 0;                      // Enable body effect.
   parameter integer clme       = 1;                      // Enable channel length modulation effect/
   parameter integer mmatch     = 0 from[0:1];            // Enable mismatch
@@ -19,16 +19,16 @@ module pmos0p8(gate, drain, source, body);
   localparam real Nsub   = 5e20;           // doping of substrate m^(-3)
   localparam real ni     = 1e16;           // intrinsic carrier conc. in Si m^(-3)
   localparam real u_p    = 100e-4;         // majority carrier mobility m^2/(V/s)
-  localparam real e_ox   = 34e-9;          // permitivity of SiO2 F/m 
+  localparam real e_ox   = 3.45e-11;      // permitivity of SiO2 F/m 
   localparam real lamda  = 0.2;            // channel length modulation coefficient 1/V 
-  localparam real e_si   = 10e-9;          // permitivity of Si F/m
+  localparam real e_si   = 1.03e-10;       // permitivity of Si F/m
   localparam real tox    = 9e-9;           // thickness of gate oxide m
   localparam real phi_ms = -1.36;          // V
   localparam real q      = 1.60e-19;       // Columbs
   localparam real c_ov   = 0.3e-9;         // Gate-Source/Gate-Drain overlap capacitance F/m
   localparam real c_jsw  = 0.32e-11;       // Source/Drain sidewall junction wall capacitace F/m
   localparam real c_j    = 0.94e-3;        // Souce/Drain junction capacitance in F/m^2
-  localparam real E      = 10n;            // Source/Drain length [m]
+  localparam real E      = 10u;            // Source/Drain length [m]
   // simualtion parameter
   localparam integer seed = 5;
 
@@ -79,7 +79,7 @@ module pmos0p8(gate, drain, source, body);
 
     // body effect modeling
     if(be == 1)
-      vth = vth_0 + ((be*gamma)*($sqrt((2*phif*$abs(V(source,body)))**(0.5)) - $sqrt((phif)**(0.5))));
+      vth = vth_0 + ((be*gamma)*($sqrt((2*phif*$abs(V(source,body)))) - $sqrt((phif)**)));
     else
       vth = vth_0;
 
@@ -108,7 +108,7 @@ module pmos0p8(gate, drain, source, body);
     end else begin
       // saturation
       // CGS & CGD
-      c_gs = ((2/3)*W*L*c_ox + width*c_ov);
+      c_gs = ((2/3)*W*L*c_ox + W*c_ov);
       c_gd = (W*c_ov);
       // CGB
       c_gb  = 0;
