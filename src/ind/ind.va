@@ -1,0 +1,55 @@
+// VerilogA for basicPDK, ind, veriloga
+
+`include "constants.vams"
+`include "disciplines.vams"
+
+module ind(p, n);
+  inout p, n;
+  electrical p, n;
+
+  parameter real    mu_r    = 0.999996; // realative permeability of material (Au as default)
+  parameter real    T_0     = 300;      // temperature at which rho_0 was obtained [K]
+  parameter real    alpha   = 1;        // 1st order coefficient
+  parameter real    beta    = 1;        // 2nd order coefficient
+  parameter real    kappa   = 1;        // 3rd order coefficient
+  parameter real    radius  = 10n;      // raidus of wire in [m]
+  parameter real    length  = 1u;       // length of wire in [m]
+  parameter integer mmatch  = 1;        // enables mismatch.
+  parameter integer procVar = 1;        // enables process variation.
+  parameter real    procVal = 0.2;      // process variation parameter.
+
+  localparam integer seed = 5;
+  localparam real    pi   = 3.14159;     // PI
+  localparam real    mu_0  = 4*pi*10e-7; // permeability of free space [H/m]
+
+  real len;   // length of wire with process variation and mismatch effects.
+  real L_0;   // self inductance before temperature compensation.
+  real r;     // radius of wire with proccess variation and mismatch effects.
+
+  // thickness, width and length adjustments for process and device mismatch
+  analog initial begin
+  if(procVar == 1) begin
+    if(mmatch == 1) begin
+      len = length*(1 + procVal + 0.10*$rdist_uniform(seed,0, 1));
+      r = radius*(1 + procVal  + 0.10*$rdist_uniform(seed,0, 1));
+    end else begin
+      len = length*(1.0 + procVal);
+      r = radius*(1.0 + procVal);    
+    end
+  end else begin
+    len = length;
+    r = radius;
+  end
+    L_0 = (mu_0*mu_r*(r**2)*pi)/len;
+  end
+
+  analog begin
+  L = L_0*(1 + alpha*($temperature - T_0) + beta*($temperature - T_0)**2 + kappa*($temperature - T_0)**3);
+  V(p, n) <+ L*ddt(I(p, n));
+  // Display PMOS Device Values
+  $strobe("R = %f", R);
+  $strobe("W = %f", W);
+  $strobe("L = %f", L);
+  end
+
+endmodule
