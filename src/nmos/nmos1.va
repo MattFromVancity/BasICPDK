@@ -1,0 +1,121 @@
+/*
+	VerilogA for basic PDK
+	NMOS Transistor
+*/
+
+`include "disciplines.vams"
+
+module nmos1 (gate, drain, source, body);
+
+	// 4-Port Model (Gate, Source, Drain, Body)
+	inout gate, drain, source, body;
+	electrical gate, drain, source, body;
+
+	// User Input Parameters (set to defaults)
+	parameter real width = 10u;						// NMOS width in m
+	parameter real length = 1u;						// NMOS length in m
+	parameter integer body_effect = 0;				// Enable body effect
+	parameter integer cl_modulation = 1;			// Enable channel length modulation
+	parameter integer mismatch = 0 from[0:1];		// Enable mismatch
+	parameter integer procVar = 0 from[0:1];		// Enable process variation
+	parameter real procVal = 0.02 from(0:0.10);		// Process variation value
+
+	// Constants
+	localparam real Nsub = 9e20;			// Substrate doping (m^-3)
+	localparam real ni = 1e16;				// Intrinsic carrier concentration for Silicon (m^-3)
+	localparam real u_n = 350e-4;			// Majority carrier mobility (m^2/(V/s))
+	localparam real lambda = 0.1;			// Channel length modulation coefficient (V^-1)
+	localparam real e_r_ox = 3.9;			// Relative permitivity of SiO2
+	localparam real e_o = 8.854e-12;		// Permitivity of Free Space (F/m)
+	localparam real e_ox = e_r_ox * e_o;	// Permitivity of SiO2 (F/m)
+	localparam real e_r_si = 11.7;			// Relative permitivity of Si
+	localparam real e_si = e_r_si * e_o;	// Permitivity of Si (F/m)
+	localparam real t_ox_const = 9e-9;		// Gate-oxide thickness (m)
+	localparam real phi_ms = -1.36;			// V TODO: Update for NMOS
+	localparam real q = 1.6e-19;			// C
+	localparam real c_ov = 0.4e-9;			// GS/GD overlap capacitance (F/m)
+	localparam real c_jsw = 0.35e-11;		// SD sidewall capacitance (F/m)
+	localparam real c_j = 0.56e-3;			// SD junction capacitance (F/m^2)
+	localparam real E = 1e-6;				// SD length (m)
+
+	// Internal Parameters
+	real T = $temperature;
+	real v_th, v_th_0, phi_f, gamma, W, L, t_ox, c_ox;
+	real c_sb, c_db, c_gb, c_gd, c_gs, c_d;
+	integer seed = 5;
+
+	// Process variation and mismatch
+	analog initial begin
+		if(procVar == 1) begin
+			if(mismatch == 1) begin
+				L = length * (1.0 + procVal + 0.1 * $rdist_uniform(seed, 0, 1));
+				W = width * (1.0 + procVal + 0.1 * $rdist_uniform(seed, 0, 1));
+				t_ox = t_ox_const * (1 + procVal + 0.1 * $rdist_uniform(seed, 0, 1));
+			end else begin
+				L = length * (1.0 + procVal);
+				W = width * (1.0 + procVal);
+				t_ox = t_ox_const * (1.0 + procVal);
+			end
+		end else begin
+			L = length;
+			W = width;
+			t_ox = t_ox_const;
+		end
+	end
+
+	// Background variables
+	analog begin
+
+		// Temperature dependance
+		phi_f = $vt(T) * $ln(Nsub / ni);
+		v_th_0 = phi_ms + 2 * phi_f + ($sqrt(4 * phi_f * 829p) / c_ox); // eqn from PMOS model
+		gamma = $sqrt(2 * q * e_si * Nsub) / c_ox;
+
+		// Body effect
+		if (body_effect == 1)
+			v_th = v_th_0 + gamma * ($sqrt(2 * phi_f + $abs(V(source, body))) + $sqrt($abs(2 * phi_f)));
+		else
+			v_th = v_th_0;
+	end
+
+	// Capacitances and Id
+	analog begin
+
+		c_d = W * L * $sqrt(q * e_si * Nsub / (4 * phi_f)); // TODO: find equation for documentation
+		c_ox = e_ox / t_ox;
+		c_sb = W * E * c_j + 2 * (W + E) * c_jsw;
+		c_db = W * E * c_j + 2 * (W + E) * c_jsw;
+
+		if(V(gate, source) <= v_th) begin // OFF
+			c_gb = (W * L * c_ox * c_d) / (W * L * c_ox + c_d);
+			c_gd = W * c_ov;
+			c_gs = W * c_ov;
+			I(drain, source) <+ 1.0u * $exp(V(gate, source) / $vt(T));
+		end else if(V(drain, source) <= ((V(gate, source) - v_th))) begin // TRIODE
+			c_gb = 0;
+			c_gd = 0.5 * W * L * c_ox + W * c_ov;
+			c_gs = 0.5 * W * L * c_ox + W * c_ov;
+			I(drain, source) <+ u_n * c_ox * W / L * ((V(gate, source) - v_th) * V(drain, source) - 0.5 * V(drain, source)**2);
+		end else begin // SATURATION
+			c_gb = 0;
+			c_gd = W * c_ov;
+			c_gs = 2/3 * W * L * c_ox + W * c_ov;
+			I(drain, source) <+ u_n * c_ox * W / L * (V(gate, source) - v_th)**2 * (1 + cl_modulation * lambda * V(drain, source));
+		end
+
+		// Parasitics
+		I(source, drain) <+ c_sb * ddt(V(source, drain));
+		I(drain, body) <+ c_sb * ddt(V(drain, body));
+		I(gate, body) <+ c_sb * ddt(V(gate, body));
+		I(gate, drain) <+ c_sb * ddt(V(gate, drain));
+		I(gate, source) <+ c_sb * ddt(V(gate, source));
+
+		// Print NMOS Values
+		$strobe("VTH = %f", v_th);
+		$strobe("Cox = %f", c_ox);
+		$strobe("W = %f", W);
+		$strobe("L = %f", L);
+		
+	end
+
+endmodule
