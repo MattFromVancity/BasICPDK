@@ -3,7 +3,7 @@
 `include "constants.vams"
 `include "disciplines.vams"
 
-module pmos(gate, drain, source, body);
+module pmos1(gate, drain, source, body);
   inout drain, source, gate, body;
   electrical drain, source, gate, body;
   // model parameters
@@ -23,7 +23,7 @@ module pmos(gate, drain, source, body);
   localparam real lamda  = 0.2;            // channel length modulation coefficient 1/V 
   localparam real e_si   = 1.03e-10;       // permitivity of Si F/m
   localparam real tox    = 9e-9;           // thickness of gate oxide m
-  localparam real phi_ms = -1.36;          // V
+  localparam real phi_ms = -1.612;          // V
   localparam real q      = 1.60e-19;       // Columbs
   localparam real c_ov   = 0.3e-9;         // Gate-Source/Gate-Drain overlap capacitance F/m
   localparam real c_jsw  = 0.32e-11;       // Source/Drain sidewall junction wall capacitace F/m
@@ -79,7 +79,7 @@ module pmos(gate, drain, source, body);
 
     // body effect modeling
     if(be == 1)
-      vth = vth_0 + ((be*gamma)*($sqrt((2*phif*$abs(V(source,body)))) - $sqrt((phif)**)));
+      vth = vth_0 + ((be*gamma)*($sqrt((2*phif*$abs(V(source,body)))) - $sqrt((phif))));
     else
       vth = vth_0;
 

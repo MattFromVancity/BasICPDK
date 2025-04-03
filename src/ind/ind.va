@@ -25,6 +25,7 @@ module ind(p, n);
   real len;   // length of wire with process variation and mismatch effects.
   real L_0;   // self inductance before temperature compensation.
   real r;     // radius of wire with proccess variation and mismatch effects.
+  real L;     // inductance
 
   // thickness, width and length adjustments for process and device mismatch
   analog initial begin
@@ -44,11 +45,9 @@ module ind(p, n);
   end
 
   analog begin
-  L = L_0*(1 + alpha*($temperature - T_0) + beta*($temperature - T_0)**2 + kappa*($temperature - T_0)**3);
-  V(p, n) <+ L*ddt(I(p, n));
-  // Display PMOS Device Values
-  $strobe("R = %f", R);
-  $strobe("W = %f", W);
+    L = L_0*(1 + alpha*($temperature - T_0) + beta*($temperature - T_0)**2 + kappa*($temperature - T_0)**3);
+    V(p, n) <+ L*ddt(I(p, n));
+  // Display Inductance
   $strobe("L = %f", L);
   end
 
