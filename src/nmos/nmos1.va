@@ -31,7 +31,7 @@ module nmos1 (gate, drain, source, body);
 	localparam real e_r_si = 11.7;			// Relative permitivity of Si
 	localparam real e_si = e_r_si * e_o;	// Permitivity of Si (F/m)
 	localparam real t_ox_const = 9e-9;		// Gate-oxide thickness (m)
-	localparam real phi_ms = -1.36;			// V TODO: Update for NMOS
+	localparam real phi_ms = 0.2;			// V TODO: Update for NMOS
 	localparam real q = 1.6e-19;			// C
 	localparam real c_ov = 0.4e-9;			// GS/GD overlap capacitance (F/m)
 	localparam real c_jsw = 0.35e-11;		// SD sidewall capacitance (F/m)
@@ -104,11 +104,11 @@ module nmos1 (gate, drain, source, body);
 		end
 
 		// Parasitics
-		I(source, drain) <+ c_sb * ddt(V(source, drain));
-		I(drain, body) <+ c_sb * ddt(V(drain, body));
-		I(gate, body) <+ c_sb * ddt(V(gate, body));
-		I(gate, drain) <+ c_sb * ddt(V(gate, drain));
-		I(gate, source) <+ c_sb * ddt(V(gate, source));
+		I(source, body) <+ c_sb * ddt(V(source, drain));
+		I(drain, body) <+ c_db * ddt(V(drain, body));
+		I(gate, body) <+ c_gb * ddt(V(gate, body));
+		I(gate, drain) <+ c_gd * ddt(V(gate, drain));
+		I(gate, source) <+ c_gs * ddt(V(gate, source));
 
 		// Print NMOS Values
 		$strobe("VTH = %f", v_th);

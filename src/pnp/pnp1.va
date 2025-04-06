@@ -1,0 +1,65 @@
+/*
+	VerilogA for basic PDK
+	PNP Transistor
+*/
+
+`include "disciplines.vams"
+
+module pnp1(c, b, e);
+
+    // 3-Port Model (Collector, Base, Emitter)
+	inout c, b, e;
+	electrical c, b, e;
+
+    // User Input Parameters (set to defaults)
+    parameter real eta = 1;                         // Fitting factor
+    parameter real I_se = 1e-15;                     // Saturation current (Emitter) in Amps
+    parameter real V_BE = 0.7;                      // Base-Emitter voltage (V)
+    parameter real beta = 200;                      // Beta
+    parameter real beta_sat = 20;                   // Beta in saturation mode
+    parameter real beta_rev = 20;                   // Beta in reverse mode
+    parameter integer mismatch = 0 from[0:1];		// Enable mismatch
+	parameter integer procVar = 0 from[0:1];		// Enable process variation
+	parameter real procVal = 0.02 from(0:0.10);		// Process variation value
+
+    // Constants
+    localparam real k = 1.38e-23;                   // Boltzmann constant
+    localparam real q = 1.6e-19;			        // C
+    localparam integer seed = 5;
+    localparam real T = $temperature;
+    localparam real r_pi = 500;                     // TODO: update this
+
+    // Helper variables
+    real Vt, I_s;
+
+    // Calculations & variation
+    analog initial begin
+        if(procVar == 1) begin
+            if(mismatch == 1) begin
+                I_s = I_se * (1.0 + procVal + 0.1 * $rdist_uniform(seed, 0, 1));
+            end else begin
+                I_s = I_se * (1.0 + procVal);
+            end
+        end else begin
+            I_s = I_se;
+        end
+    end
+
+    // Set output current
+    analog begin
+        Vt = k * T / q;
+
+        if(V(e, b) <= 0 & V(b, c) <= 0) begin // Reverse
+            I(c, e) <+ beta_rev * V(b, e) / r_pi; // V_BE / r_pi is rough estimate for ib
+        end else if(V(e, b) <= 0 & V(b, c) > 0) begin // Cutoff
+            I(c, e) <+ 0;
+        end else if(V(e, b) > 0 & V(b, c) <= 0) begin // Saturation
+            I(c, e) <+ beta_sat * V(b, e) / r_pi; // V_BE / r_pi is rough estimate for ib
+        end else begin // Active
+            I(c, e) <+ I_s * ($exp(V(b, e) / Vt) - 1);
+        end
+
+    end
+    
+
+endmodule
