@@ -1,10 +1,18 @@
+/*
+	VerilogA for basic PDK
+	Capacitor
+*/
+
 `include "disciplines.vams"
 `include "constants.vams"
 
-module cap1 (p, n);
+module cap(p, n);
 
+    // 2-Port Model (Positive, Negative)
+	inout p, n;
 	electrical p, n;
 
+<<<<<<< HEAD
 	parameter real width = 1u;
 	parameter real length = 1u;
 	parameter real distance = 0.1u;
@@ -49,5 +57,56 @@ module cap1 (p, n);
 		I(p,n) <+ C * ddt(V(p,n));
 		$strobe("Inductance = %f", L);
 	end
+=======
+    // User Input Parameters (set to defaults)
+    parameter real width = 10u;						// Capacitor width in m
+    parameter real length = 10u;					// Capacitor length in m
+    parameter real distance = 1u;					// Capacitor distance in m
+    parameter real e_r = 3.9;                       // Relative permitivity (default SiO2)
+    parameter real alpha = 0;                       // 1st order temperature coefficient
+    parameter real beta = 0;                        // 2nd order temperature coefficient
+    parameter real kappa = 0;                       // 3rd order temperature coefficient
+    parameter real T_0 = 300;                       // Reference temperature
+    parameter integer mismatch = 0 from[0:1];		// Enable mismatch
+	parameter integer procVar = 0 from[0:1];		// Enable process variation
+	parameter real procVal = 0.02 from(0:0.10);		// Process variation value
+
+    // Constants
+    localparam real e_o = 8.854e-12;		// Permitivity of Free Space (F/m)
+    localparam integer seed = 5;
+    localparam real T = $temperature;
+
+    // Helper variables
+    real C, W, L, d;
+>>>>>>> 09581a169466aa01be6b844fe0c5363393f289b4
+
+    // Calculations & variation
+    localparam real e = e_r * e_o;
+    analog initial begin
+        if(procVar == 1) begin
+            if(mismatch == 1) begin
+                L = length * (1.0 + procVal + 0.1 * $rdist_uniform(seed, 0, 1));
+                W = width * (1.0 + procVal + 0.1 * $rdist_uniform(seed, 0, 1));
+                d = distance * (1.0 + procVal + 0.1 * $rdist_uniform(seed, 0, 1));
+            end else begin
+                L = length * (1.0 + procVal);
+                W = width * (1.0 + procVal);
+                d = distance * (1.0 + procVal);
+            end
+        end else begin
+            L = length;
+            W = width;
+            d = distance;
+        end
+    end
+
+    // Set output current
+    analog begin
+        C = e * W * L / d * (1 + alpha * (T - T_0) + beta * (T - T_0)**2 + kappa * (T - T_0)**3);
+        I(p, n) <+ C * ddt(V(p,n));
+
+        $strobe("C = %f", C);
+    end
+    
 
 endmodule
