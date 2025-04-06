@@ -1,0 +1,23 @@
+`include "disciplines.vams"
+
+module cap1 (p, n);
+
+	electrical p, n;
+
+	parameter real width = 1u;
+	parameter real length = 1u;
+	parameter real distance = 0.1u;
+	parameter real a = 0;
+	parameter real b = 0;
+	parameter real c = 0;
+	parameter real T_o = 0;
+	parameter real er = 1;
+
+	localparam real T = $temperature;
+	localparam real e_o = 8.85e-12;
+	localparam real C = er * e_o * width * length / distance * (1 + a*(T - T_o) + b*(T - T_o)**2 + c*(T - T_o)**3)
+
+	analog
+		I(p,n) <+ C * ddt(V(p,n));
+
+endmodule
