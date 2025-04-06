@@ -1,4 +1,5 @@
 `include "disciplines.vams"
+`include "constants.vams"
 
 module cap1 (p, n);
 
@@ -7,17 +8,46 @@ module cap1 (p, n);
 	parameter real width = 1u;
 	parameter real length = 1u;
 	parameter real distance = 0.1u;
-	parameter real a = 0;
-	parameter real b = 0;
-	parameter real c = 0;
+	parameter real alpha = 0;
+	parameter real beta = 0;
+	parameter real kappa = 0;
 	parameter real T_o = 0;
 	parameter real er = 1;
+    parameter integer mmatch = 1;    // enables mismatch.
+    parameter integer procVar = 1;   // enables process variation.
+    parameter real procVal    = 0.2; // process variation parameter.
+
+    localparam integer seed = 5;
 
 	localparam real T = $temperature;
 	localparam real e_o = 8.85e-12;
-	localparam real C = er * e_o * width * length / distance * (1 + a*(T - T_o) + b*(T - T_o)**2 + c*(T - T_o)**3)
+	real C = 0;
+	real d = 0;
+	real W = 0;
+	real L = 0;
 
-	analog
+    // distanceness, width and length adjustments for process and device mismatch
+	analog initial begin
+		if(procVar == 1) begin
+		  if(mmatch == 1) begin
+			L = length*(1 + procVal + 0.10*$rdist_uniform(seed,0, 1));
+			W = width*(1 + procVal  + 0.10*$rdist_uniform(seed,0, 1));
+			d = distance*(1.0 + procVal + 0.10*$rdist_uniform(seed,0, 1));
+		  end else begin
+			L = length*(1.0 + procVal);
+			W = width*(1.0 + procVal);
+			d = distance*(1.0 + procVal);      
+		  end
+		end else begin
+		  L = length;
+		  W = width;
+		  d = distance;
+		  C = er * e_o * W * L / d * (1 + alpha*(T - T_o) + beta*(T - T_o)**2 + kappa*(T - T_o)**3);
+	end
+	  end
+	analog begin
 		I(p,n) <+ C * ddt(V(p,n));
+		$strobe("Inductance = %f", L);
+	end
 
 endmodule
