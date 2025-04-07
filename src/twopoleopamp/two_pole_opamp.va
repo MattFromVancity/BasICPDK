@@ -1,0 +1,53 @@
+`include "constants.vams"
+`include "disciplines.vams"
+
+module two_pole_opamp(vina, vinb, vouta, voutb);
+
+    inout  vina, vinb, vouta, voutb;
+    electrical vina, vinb, vouta, voutb;
+
+    parameter real f            = 100M; // Signal Frequency (Hz)
+    parameter real f1           = 100M; // First pole frequency (Hz)
+    parameter real f2           = 200M; // First pole frequency (Hz)
+    parameter real A            = 1000; // Gain
+    parameter integer mismatch  = 1;    // enables mismatch.
+    parameter integer procVar = 1;    // enables process variation.
+    parameter real procVal    = 0.2;  // process variation parameter.
+
+    localparam real R1           = 1k;    // Resistance of internal RC circuit 1 (default=1k)
+    localparam real R2           = 1k;    // Resistance of internal RC circuit 2 (default=1k)
+    localparam integer seed = 5;
+
+    real CL1, CL2;   // Internal load capacitance and poles
+    real A_final;                   // Adjusted gain
+    real poles[0:3];
+
+    // Process variation will adjust gain
+    analog initial begin
+        if(procVar == 1) begin
+            if(mismatch == 1) begin
+                A_final = A * (1.0 + procVal + 0.10 * $rdist_uniform(seed, 0, 1));
+            end else begin
+                A_final = A * (1.0 + procVal);  
+            end 
+            end
+        else begin
+            A_final = A;
+        end
+    end
+
+  analog begin
+
+        CL1 = 1.0 / (2 * 3.14159 * R1 * f1);
+        CL2 = 1.0 / (2 * 3.14159 * R2 * f2);
+        
+        poles[0] = 1.0;
+        poles[1] = R1 * CL1 * 2 * 3.14159 * f;
+        poles[2] = 1.0;
+        poles[3] = R2 * CL2 * 2 * 3.14159 * f;
+
+        V(vouta, voutb) <+ laplace_np(A_final * V(vina, vinb), , poles);
+
+end
+
+endmodule
