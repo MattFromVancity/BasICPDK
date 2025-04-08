@@ -19,6 +19,7 @@ module nmos1 (gate, drain, source, body);
 	parameter integer mismatch = 0 from[0:1];		// Enable mismatch
 	parameter integer procVar = 0 from[0:1];		// Enable process variation
 	parameter real procVal = 0.02 from(0:0.10);		// Process variation value
+	parameter integer parasitics = 1;
 
 	// Constants
 	localparam real Nsub = 9e20;			// Substrate doping (m^-3)
@@ -31,7 +32,7 @@ module nmos1 (gate, drain, source, body);
 	localparam real e_r_si = 11.7;			// Relative permitivity of Si
 	localparam real e_si = e_r_si * e_o;	// Permitivity of Si (F/m)
 	localparam real t_ox_const = 9e-9;		// Gate-oxide thickness (m)
-	localparam real phi_ms = 0.2;			// V TODO: Update for NMOS
+	localparam real phi_ms = -0.1;			// V TODO: Update for NMOS
 	localparam real q = 1.6e-19;			// C
 	localparam real c_ov = 0.4e-9;			// GS/GD overlap capacitance (F/m)
 	localparam real c_jsw = 0.35e-11;		// SD sidewall capacitance (F/m)
@@ -67,8 +68,10 @@ module nmos1 (gate, drain, source, body);
 	analog begin
 
 		// Temperature dependance
+		c_ox = e_ox / t_ox;
 		phi_f = $vt(T) * $ln(Nsub / ni);
 		v_th_0 = phi_ms + 2 * phi_f + ($sqrt(4 * phi_f * 829p) / c_ox); // eqn from PMOS model
+		$strobe("c_ox = %f", c_ox);
 		gamma = $sqrt(2 * q * e_si * Nsub) / c_ox;
 
 		// Body effect
@@ -90,25 +93,30 @@ module nmos1 (gate, drain, source, body);
 			c_gb = (W * L * c_ox * c_d) / (W * L * c_ox + c_d);
 			c_gd = W * c_ov;
 			c_gs = W * c_ov;
-			I(drain, source) <+ 1.0u * $exp(V(gate, source) / $vt(T));
+			I(drain, source) <+ 1.0n * W / L * $exp(V(gate, source) / (5 * $vt(T)));
+			$strobe("OFF");
 		end else if(V(drain, source) <= ((V(gate, source) - v_th))) begin // TRIODE
 			c_gb = 0;
 			c_gd = 0.5 * W * L * c_ox + W * c_ov;
 			c_gs = 0.5 * W * L * c_ox + W * c_ov;
 			I(drain, source) <+ u_n * c_ox * W / L * ((V(gate, source) - v_th) * V(drain, source) - 0.5 * V(drain, source)**2);
+			$strobe("TRIODE");
 		end else begin // SATURATION
 			c_gb = 0;
 			c_gd = W * c_ov;
 			c_gs = 2/3 * W * L * c_ox + W * c_ov;
 			I(drain, source) <+ u_n * c_ox * W / L * (V(gate, source) - v_th)**2 * (1 + cl_modulation * lambda * V(drain, source));
+			$strobe("SATURATION");
+			$strobe("ID = %f", u_n * c_ox * W / L * (V(gate, source) - v_th)**2 * (1 + cl_modulation * lambda * V(drain, source)));
 		end
 
-		// Parasitics
-		I(source, body) <+ c_sb * ddt(V(source, drain));
-		I(drain, body) <+ c_db * ddt(V(drain, body));
-		I(gate, body) <+ c_gb * ddt(V(gate, body));
-		I(gate, drain) <+ c_gd * ddt(V(gate, drain));
-		I(gate, source) <+ c_gs * ddt(V(gate, source));
+		if (parasitics == 1) begin // Parasitics
+			I(source, body) <+ c_sb * ddt(V(source, drain));
+			I(drain, body) <+ c_db * ddt(V(drain, body));
+			I(gate, body) <+ c_gb * ddt(V(gate, body));
+			I(gate, drain) <+ c_gd * ddt(V(gate, drain));
+			I(gate, source) <+ c_gs * ddt(V(gate, source));
+		end
 
 		// Print NMOS Values
 		$strobe("VTH = %f", v_th);
