@@ -7,15 +7,6 @@
 
 module npn1(c, b, e);
 
-/*
-	VerilogA for basic PDK
-	PNP Transistor
-*/
-
-`include "disciplines.vams"
-
-module npn1(c, b, e);
-
     // 3-Port Model (Collector, Base, Emitter)
 	inout c, b, e;
 	electrical c, b, e;
@@ -69,9 +60,6 @@ module npn1(c, b, e);
         end
 
     end
-    
-
-endmodule
     
 
 endmodule
