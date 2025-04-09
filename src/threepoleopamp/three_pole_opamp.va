@@ -14,15 +14,12 @@ module three_pole_opamp(vina, vinb, vouta, voutb);
     parameter integer mismatch  = 1;    // enables mismatch.
     parameter integer procVar = 1;    // enables process variation.
     parameter real procVal    = 0.2;  // process variation parameter.
-
-    localparam real R1           = 1k;    // Resistance of internal RC circuit 1 (default=1k)
-    localparam real R2           = 1k;    // Resistance of internal RC circuit 2 (default=1k)
-    localparam real R3           = 1k;    // Resistance of internal RC circuit 2 (default=1k)
+    
     localparam integer seed = 5;
 
-    real CL1, CL2, CL3;    // Internal load capacitances
+    real w1, w2, w3;                // Frequencies (radians)
     real A_final;                   // Adjusted gain
-    real poles[0:5];
+    real denom[0:3];
 
 
     // Process variation will adjust gain
@@ -41,18 +38,16 @@ module three_pole_opamp(vina, vinb, vouta, voutb);
 
   analog begin
 
-    CL1 = 1.0 / (2 * 3.14159 * R1 * f1);
-    CL2 = 1.0 / (2 * 3.14159 * R2 * f2);
-    CL3 = 1.0 / (2 * 3.14159 * R3 * f3);
-    
-    poles[0] = 1.0;
-    poles[1] = R1 * CL1 * 2 * 3.14159 * f;
-    poles[2] = 1.0;
-    poles[3] = R2 * CL2 * 2 * 3.14159 * f;
-    poles[4] = 1.0;
-    poles[5] = R3 * CL3 * 2 * 3.14159 * f;
+    w1 = 2 * 3.14159 * f1;
+    w2 = 2 * 3.14159 * f2;
+    w3 = 2 * 3.14159 * f3;
 
-    V(vouta, voutb) <+ laplace_np(A_final * V(vina, vinb), , poles);
+    denom[0] = 1.0;
+    denom[1] = 1.0/w1 + 1.0/w2 + 1.0/w3;
+    denom[2] = 1.0/(w1*w2) + 1.0/(w1*w3) + 1.0/(w2*w3);
+    denom[3] = 1.0/(w1*w2*w3);
+
+    V(vouta, voutb) <+ laplace_nd(A_final * V(vina, vinb), , denom);
 
 
 end

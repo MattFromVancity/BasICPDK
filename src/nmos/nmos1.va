@@ -88,6 +88,7 @@ module nmos1 (gate, drain, source, body);
 		c_ox = e_ox / t_ox;
 		c_sb = W * E * c_j + 2 * (W + E) * c_jsw;
 		c_db = W * E * c_j + 2 * (W + E) * c_jsw;
+		
 
 		if(V(gate, source) <= v_th) begin // OFF
 			c_gb = (W * L * c_ox * c_d) / (W * L * c_ox + c_d);
@@ -95,7 +96,7 @@ module nmos1 (gate, drain, source, body);
 			c_gs = W * c_ov;
 			I(drain, source) <+ 1.0n * W / L * $exp(V(gate, source) / (5 * $vt(T)));
 			$strobe("OFF");
-		end else if(V(drain, source) <= ((V(gate, source) - v_th))) begin // TRIODE
+		end else if(V(drain, source) <= ((V(gate, source) - $abs(v_th)))) begin // TRIODE
 			c_gb = 0;
 			c_gd = 0.5 * W * L * c_ox + W * c_ov;
 			c_gs = 0.5 * W * L * c_ox + W * c_ov;
@@ -105,9 +106,8 @@ module nmos1 (gate, drain, source, body);
 			c_gb = 0;
 			c_gd = W * c_ov;
 			c_gs = 2/3 * W * L * c_ox + W * c_ov;
-			I(drain, source) <+ u_n * c_ox * W / L * (V(gate, source) - v_th)**2 * (1 + cl_modulation * lambda * V(drain, source));
+			I(drain, source) <+ 0.5 * u_n * c_ox * W / L * (V(gate, source) - v_th)**2 * (1 + cl_modulation * lambda * V(drain, source));
 			$strobe("SATURATION");
-			$strobe("ID = %f", u_n * c_ox * W / L * (V(gate, source) - v_th)**2 * (1 + cl_modulation * lambda * V(drain, source)));
 		end
 
 		if (parasitics == 1) begin // Parasitics
