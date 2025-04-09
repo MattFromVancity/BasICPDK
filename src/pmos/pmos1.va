@@ -95,7 +95,7 @@ module pmos1(gate, drain, source, body);
       // CGB
       c_gb  = (((W*L*c_ox)*c_d)/(W*L*c_ox + c_d));
       // IDS
-      I(drain, source) <+ -5.0u*$exp(V(gate, source)/$vt($temperature));
+      I(drain, source) <+ -1.0n*(W/L)**$exp(V(gate, source)/$vt($temperature)) / (5 * $vt($temperature));
     end else if($abs(V(drain, source)) <= ($abs(V(gate,source)) - $abs(vth))) begin
       // triode
       // CGS & CGD
