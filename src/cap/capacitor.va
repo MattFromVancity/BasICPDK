@@ -58,7 +58,7 @@ module cap(p, n);
         C = e * W * L / d * (1 + alpha * (T - T_0) + beta * (T - T_0)**2 + kappa * (T - T_0)**3);
         I(p, n) <+ C * ddt(V(p,n));
 
-        $strobe("C = %f", C);
+        $strobe("C = %f", C*10**12);
     end
     
 

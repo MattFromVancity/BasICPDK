@@ -48,7 +48,7 @@ module ind(p, n);
     L = L_0*(1 + alpha*($temperature - T_0) + beta*($temperature - T_0)**2 + kappa*($temperature - T_0)**3);
     V(p, n) <+ L*ddt(I(p, n));
   // Display Inductance
-  $strobe("L = %f", L);
+  $strobe("Inductance = %f", L);
   end
 
 endmodule
