@@ -128,6 +128,12 @@ module pmos1(gate, drain, source, body);
     $strobe("Cox = %f", c_ox);
     $strobe("W = %f", W);
     $strobe("L = %f", L);
+    // Display Parasitic Capacitances
+    $strobe("Cgs fF = %f", c_gs*10**15);
+    $strobe("Cgd fF = %f", c_gd*10**15);
+    $strobe("Cgb fF = %f", c_gb*10**15);
+    $strobe("Cdb fF = %f", c_db*10**15);
+    $strobe("Csb fF = %f", c_sb*10**15);
 
   end
 
