@@ -21,6 +21,7 @@ module npn1(c, b, e);
     parameter integer mismatch = 0 from[0:1];		// Enable mismatch
 	parameter integer procVar = 0 from[0:1];		// Enable process variation
 	parameter real procVal = 0.02 from(0:0.10);		// Process variation value
+    parameter integer n = 5000;                     // Scaling factor
 
     // Constants
     localparam real k = 1.38e-23;                   // Boltzmann constant
@@ -47,19 +48,24 @@ module npn1(c, b, e);
 
     // Set output current
     analog begin
-        Vt = k * T / q;
+        Vt = k * $temperature / q;
+        
+        V(b,e) <+ Vt*ln(n) + V_BE;
 
         if(V(e, b) <= 0 & V(b, c) <= 0) begin // Active
             I(c, e) <+ I_s * ($exp(V(b, e) / Vt) - 1);
         end else if(V(e, b) <= 0 & V(b, c) > 0) begin // Saturation
-            I(c, e) <+ beta_sat * V(b, e) / r_pi; // V_BE / r_pi is rough estimate for ib
+            I(c, e) <+ beta_sat * V(b,e) / r_pi; // V_BE / r_pi is rough estimate for ib
         end else if(V(e, b) > 0 & V(b, c) <= 0) begin // Cutoff
+            $strobe("CUTOFF", V(b,e));
             I(c, e) <+ 0;
         end else begin // Reverse
-            I(c, e) <+ beta_rev * V(b, e) / r_pi; // V_BE / r_pi is rough estimate for ib
+            I(c, e) <+ beta_rev * V(b,e) / r_pi; // V_BE / r_pi is rough estimate for ib
         end
 
-    end
-    
+        $strobe("Vbe = %f", V(b,e));
+        $strobe("Vt = %f", Vt);
+        $strobe("IC fA = %f", I(c,e)*10**15);
+        $strobe("IC fA = %f", I(c,e)*10**15);
 
-endmodule
+    end
