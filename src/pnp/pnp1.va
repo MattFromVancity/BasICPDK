@@ -52,13 +52,13 @@ module pnp1(c, b, e);
         V(b,e) <+ Vt*ln(n) + V_BE;
 
         if(V(e, b) <= 0 & V(b, c) <= 0) begin // Reverse
-            I(c, e) <+ beta_rev * V(b, e) / r_pi; // V_BE / r_pi is rough estimate for ib
+            I(c, e) <+ n * beta_rev * V(b, e) / r_pi; // V_BE / r_pi is rough estimate for ib
         end else if(V(e, b) <= 0 & V(b, c) > 0) begin // Cutoff
             I(c, e) <+ 0;
         end else if(V(e, b) > 0 & V(b, c) <= 0) begin // Saturation
-            I(c, e) <+ beta_sat * V(b, e) / r_pi; // V_BE / r_pi is rough estimate for ib
+            I(c, e) <+ n * beta_sat * V(b, e) / r_pi; // V_BE / r_pi is rough estimate for ib
         end else begin // Active
-            I(c, e) <+ I_s * ($exp(V(b, e) / Vt) - 1);
+            I(c, e) <+ n * I_s * ($exp(V(b, e) / Vt) - 1);
         end
 
     end
