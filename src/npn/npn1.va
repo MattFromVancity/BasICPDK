@@ -69,3 +69,6 @@ module npn1(c, b, e);
         $strobe("IC fA = %f", I(c,e)*10**15);
 
     end
+    
+
+endmodule
